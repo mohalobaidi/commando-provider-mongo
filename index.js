@@ -50,13 +50,14 @@ class MongoDBProvider extends SettingProvider {
         
         // Load all settings
         collection.find().forEach(doc => {
-            const guild = doc.guild !== '0' ? doc.guild : 'global';
-            this.settings.set(guild, doc.settings);
+            const guildID = doc.guild !== '0' ? doc.guild : 'global';
+            this.settings.set(guildID, doc.settings);
 
             // Guild is not global, and doesn't exist currently so lets skip it.
-            if(guild !== 'global' && !(client.guilds.cache.has(doc.guild) || client.guilds.has(doc.guild))) return;
+            const hasGuild = client.guilds.cache ? client.guilds.cache.has(guildID) : client.guilds.has(guildID);
+            if(guildID !== 'global' && !hasGuild) return;
 
-            this.setupGuild(guild, doc.settings);
+            this.setupGuild(guildID, doc.settings);
         });
 
 		// Listen for changes
@@ -70,15 +71,19 @@ class MongoDBProvider extends SettingProvider {
 				this.setupGuild(guild.id, settings);
 			})
 			.set('commandRegister', command => {
-				for(const [guild, settings] of this.settings) {
-					if(guild !== 'global' && !(client.guilds.cache.has(guild) || client.guilds.has(guild))) continue;
-					this.setupGuildCommand((client.guilds.cache.get(guild) || client.guilds.get(guild)), command, settings);
+				for(const [guildID, settings] of this.settings) {
+					const hasGuild = client.guilds.cache ? client.guilds.cache.has(guildID) : client.guilds.has(guildID);
+					if(guildID !== 'global' && !hasGuild) continue;
+					const guild = client.guilds.cache ? client.guilds.cache.get(guildID) : client.guilds.get(guildID);
+					this.setupGuildCommand(guild, command, settings);
 				}
 			})
 			.set('groupRegister', group => {
-				for(const [guild, settings] of this.settings) {
-					if(guild !== 'global' && !(client.guilds.cache.has(guild) || client.guilds.has(guild))) continue;
-					this.setupGuildGroup((client.guilds.cache.get(guild) || client.guilds.get(guild)), group, settings);
+				for(const [guildID, settings] of this.settings) {
+					const hasGuild = client.guilds.cache ? client.guilds.cache.has(guildID) : client.guilds.has(guildID);
+					if(guildID !== 'global' && !hasGuild) continue;
+					const guild = client.guilds.cache ? client.guilds.cache.get(guildID) : client.guilds.get(guildID);
+					this.setupGuildGroup(guild, group, settings);
 				}
 			});
 		for(const [event, listener] of this.listeners) client.on(event, listener);
@@ -152,7 +157,7 @@ class MongoDBProvider extends SettingProvider {
 	 */
 	setupGuild(guild, settings) {
 		if(typeof guild !== 'string') throw new TypeError('The guild must be a guild ID or "global".');
-		guild = (this.client.guilds.cache.get(guild) || this.client.guilds.get(guild)) || null;
+		guild = (this.client.guilds.cache ? this.client.guilds.cache.get(guild) : this.client.guilds.get(guild)) || null;
 
 		// Load the command prefix
 		if(typeof settings.prefix !== 'undefined') {
