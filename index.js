@@ -49,7 +49,7 @@ class MongoDBProvider extends SettingProvider {
         const collection = await this.db.collection('settings');
         
         // Load all settings
-        collection.find().forEach(doc => {
+        await collection.find().forEach(doc => {
             const guildID = doc.guild !== '0' ? doc.guild : 'global';
             this.settings.set(guildID, doc.settings);
 
